@@ -5,15 +5,15 @@ load In.csv
 tic
 % % Initialization
 sr = 44100;
-readtime = 0.05; % read audio stream length at one time.
+readtime = 0.1; % read audio stream duration at one time.
 readLength = sr*readtime;
 
 fileReader = dsp.AudioFileReader( ...
-    'Filename','../mymusic/level5.mp3', ...
+    'Filename','F:/ÒôÀÖ/Alan Walker/Routine.flac', ...
     'SamplesPerFrame',readLength);
 
 fileWriter = dsp.AudioFileWriter(...
-    'Filename','../mymusic/beat.wav',...
+    'Filename','../../beat.wav',...
     'FileFormat','WAV',...
     'SampleRate',sr);
 
@@ -24,7 +24,7 @@ deviceReader = audioDeviceReader(...
 
 deviceWriter = audioDeviceWriter( ...
     'SampleRate',sr,...
-    'Device','å¤–ç½®è€³æœº');
+    'Device','Default');
 
 cnt = 0;
 sro = 8000;  % specgram: 80 bin @ 40kHz = 2 ms
@@ -35,7 +35,7 @@ sgsrate = sro/shop; % sample rate for specgram frames
 sampleLength = readtime * sgsrate;
 bufferhistory = 3;  % allocate time for Onset Dectection & Autocorrelation
 bufferpredict = 1;  % allocate time for Kalman Filting
-playdelay = 2;
+playdelay = 1;
 bufferLength = round((bufferhistory+bufferpredict) * sr);
 buffersgsLength = round((bufferhistory+bufferpredict) * sgsrate);
 buffb = [];
@@ -50,6 +50,7 @@ obvtao = 0;
 pdlast = tmean;
 obvtaos = zeros(1);
 obvdeltas = [];
+obvtmpos = [];
 filttaos = [];
 filtdeltas = [];
 filttmpos=[];
@@ -60,12 +61,13 @@ A = [ 1 1 ;
       0 1 ];
 M = [ 1 0 ]; 
 
+ifOut = false;
+ifDraw = false;
 % % main audio stream loop
 while ~isDone(fileReader)
 
     cnt = cnt+1;
     nowtime = cnt * readtime;
-    
     starttime = bufferhistory - playdelay;
     playtime = nowtime - playdelay;
 
@@ -79,125 +81,127 @@ while ~isDone(fileReader)
     % Period Estimate
     [pd,pd2,xcr,D,df,~,~] = tempo(buffsignal,sr,tmean,tsd);
     dfs = [dfs ; df( end-sampleLength : end )'];
+    
     % % Kalman Filter
     pretao = sum(b);
     predelta = b(2);
-    w = 0.3 * predelta;
+    w = 0.5 * predelta;
     if pretao < nowtime - w / 2
-
-        % Valify Measurements
-        
-        pretaoloc = round((pretao - nowtime + bufferhistory) * sgsrate);
+    % Valify Measurements
+    pretaoloc = round((pretao - nowtime + bufferhistory) * sgsrate);
 %         halfw = round(w * sgsrate / 2);
 %         sreachrigion = intersect((1:length(df)),(pretaoloc-halfw:pretaoloc+halfw));
 %         intens = df(sreachrigion); 
-
-        obvtaoloc = localmax2(df,pretaoloc,w*sgsrate);
-        obvtao = nowtime - bufferhistory + obvtaoloc/sgsrate;
-        if obvtao > 0
-            b = KalmanFilter(obvtao);
-            if b(2) < 60/240
-                b(2) = 60/120;     
-            elseif b(2) > 60/60
-                b(2) = 60/60;
-            end
-            if sum(signal) == 0 
-                b(2) = 60/120;
-            end
-            disp(60/b(2))
-            % record observed & filted(valided) taos,deltas,tempos
-            obvdeltas = [ obvdeltas ; obvtao-obvtaos(end)];
-            obvtaos = [obvtaos ; obvtao];
-            filttaos = [filttaos ; b(1)];
-            filtdeltas = [filtdeltas ; b(2)];
-            filttmpos =  [filttmpos ; 60/b(2)];
-            xcrtmpos = [xcrtmpos; pd2];
-
-         end
+    obvtaoloc = localmax2(df,pretaoloc,w*sgsrate);
+    obvtao = nowtime - bufferhistory + obvtaoloc/sgsrate;
+    if obvtao > 0
+        b = KalmanFilter(obvtao);
+        if b(2) < 60/240
+            b(2) = 60/120;     
+        elseif b(2) > 60/60
+            b(2) = 60/60;
+        end
+        if sum(signal) == 0 
+            b(2) = 60/120;
+        end
+        disp(60/b(2))
+        % record observed & filted(valided) taos,deltas,tempos
+        obvdeltas = [ obvdeltas ; obvtao-obvtaos(end)];
+        obvtmpos = [obvtmpos 60/obvdeltas(end)];
+        obvtaos = [obvtaos ; obvtao];
+        filttaos = [filttaos ; b(1)];
+        filtdeltas = [filtdeltas ; b(2)];
+        filttmpos =  [filttmpos ; 60/b(2)];
+        xcrtmpos = [xcrtmpos; pd2];
+        if ifDraw
+        % Plot onset detection function
+        subplot(313)
+        timespan = linspace(nowtime-bufferhistory,nowtime+bufferpredict,buffersgsLength)';
+        p = plot(timespan,[df,zeros(1,length(timespan)-length(df))],'-b', ...
+            [nowtime nowtime], [0 10], '-b',...
+            [pretao+w/2 pretao+w/2],[0 10],'-black',...
+            [pretao-w/2 pretao-w/2],[0 10],'-black',...
+            [playtime playtime],[0 10],'-r',...
+            [obvtao obvtao],[0 10],'-g');
+        title("Onset Detection Function")
+        for i =2:6; p(i).LineWidth = 2; end
+        xlim([min(timespan) max(timespan)])
+        ylim([0 10])
+        end
     end
-
-
-            
-
-    buffb = [ obvtaos ; pretao] - (nowtime - bufferhistory);
-    [i,~]=find(buffb < 0);
-    buffb(i)=[];
-    if buffb ~= 0
+    end
+    
+    if ifOut
+        buffb = [ obvtaos ; pretao] - (nowtime - bufferhistory);
+        [i,~]=find(buffb < 0);
+        buffb(i)=[];
+        if buffb ~= 0
         buffblipsound = mkblips(buffb',sr,bufferLength); 
+        end
+        buffout = [buffsignal;zeros(sr*bufferpredict,1)] + buffblipsound;
+        out = buffout(round((starttime*sr-readLength+1:starttime*sr)));
+        deviceWriter(out);
+        fileWriter(out);
     end
-    buffout = [buffsignal;zeros(sr*bufferpredict,1)] + buffblipsound;
-    out = buffout(round((starttime*sr-readLength+1:starttime*sr)));
-    deviceWriter(out);
-    fileWriter(out);
     
-
-
-    ifDraw = false;
     if ifDraw
-    % plot Time-Domin wave in the buffer
-    subplot(311)
-    timespan = linspace(nowtime-bufferhistory,nowtime+bufferpredict,bufferLength)';
-    p = plot(timespan,buffout,'-b',...
-         [playtime playtime],[-1 1],'-r',...         
-         [pretao pretao],[0 0.3],'-g',...
-         [nowtime nowtime],[-1 1],'-b');
-    p(2).LineWidth = 1.4;
-    p(3).LineWidth = 2;
-    p(3).Marker = '^';
-    ylim([-1 1])
-    xlim([min(timespan) max(timespan)])
-    
-    % Visualize MFCCs
-    subplot(312)
-    t = linspace(nowtime-bufferhistory, nowtime, bufferhistory*sgsrate-3);       
-    ff = 1:length(D(:,1));
-    imagesc(t,ff,D);
-    axis xy; 
-    xlim([min(timespan) max(timespan)])
+        % plot Time-Domin wave in the buffer
+        subplot(311)
+        timespan = linspace(nowtime-bufferhistory,nowtime+bufferpredict,bufferLength)';
+        p = plot(timespan,buffout,'-b',...
+             [playtime playtime],[-1 1],'-r',...         
+             [pretao pretao],[-1 1],'-g',...
+             [nowtime nowtime],[-1 1],'-b');
+        p(2).LineWidth = 2;
+        p(3).LineWidth = 2;
+        title("Wave")
+        ylim([-1 1])
+        xlim([min(timespan) max(timespan)])
 
-    % Plot onset detection function
-    subplot(313)
-    timespan = linspace(nowtime-bufferhistory,nowtime+bufferpredict,buffersgsLength)';
-    p = plot(timespan,[df,zeros(1,length(timespan)-length(df))],'-b', ...
-        [nowtime nowtime], [0 10], '-b',...
-        [pretao+w/2 pretao+w/2],[0 10],'-black',...
-        [pretao-w/2 pretao-w/2],[0 10],'-black',...
-        [pretao pretao], [0 3], '-gd',...
-        [playtime playtime],[0 10],'-r',...
-        [obvtao obvtao],[0 3],'-gd');
-    for i =2:7; p(i).LineWidth = 2; end
-    xlim([min(timespan) max(timespan)])
-    ylim([0 10])
-    drawnow;
+        % Visualize MFCCs
+        subplot(312)
+        t = linspace(nowtime-bufferhistory, nowtime, bufferhistory*sgsrate-3);       
+        ff = 1:length(D(:,1));
+        imagesc(t,ff,D);
+        title("MFCCs")
+        axis xy; 
+        xlim([min(timespan) max(timespan)])
+
+        drawnow;
     end
 end
-
+obvtaos(1) = [];
+dfs(1)=[];
 release(deviceReader)   
 release(fileReader)
 release(deviceWriter)    
 release(fileWriter)
 toc
 
-% plot observed and filtered deltas
-obvtaos(1)=[];
-plot(obvtaos,obvdeltas,filttaos,filtdeltas);
-xlim([0 filttaos(end)]);
-ylim([0 1])
-drawnow 
-
-% plot tempo estimated by xcr and filter
-x = 1:length(filttmpos);
-plot(x,[filttmpos,xcrtmpos])
+% plot observed and filted deltas
+subplot(211)
+plot(obvtaos,obvtmpos, filttaos,filttmpos);
+ylim([60 240])
 xlim([0 filttaos(end)])
-drawnow 
+title("Raw & Kalman Filted Tempos")
+drawnow
+
+% % plot tempo estimated by xcr and filter
+% subplot(312)
+% x = 1:length(filttmpos);
+% plot(x,[filttmpos,xcrtmpos])
+% xlim([0 filttaos(end)])
+% title("Autocrolation and filterTempo  by ")
+% drawnow 
 
 % Plot onset detection function
-dfs(1)=[];
+subplot(212)
 timespan2 = linspace(0,nowtime,length(dfs))';
 p = plot(timespan2,dfs,'-b', ...
     [obvtaos obvtaos],[0 10],'-g');
 p(1).LineWidth = 0.2;
 p(2).LineWidth = 2;
-xlim([nowtime-5  nowtime]);
 ylim([0 10])
+xlim([0 10])
+title("Onset Detection Function")
 drawnow 

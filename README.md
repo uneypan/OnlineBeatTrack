@@ -8,7 +8,7 @@
 
 使用matlab内置音频工具箱AudioToolbox的函数dsp.AudioFileReader | dsp.AudioFileWriter | audioDeviceReader | audioDeviceWriter 实现，具体参考官方手册: [Audio I/O: Buffering, Latency, and Throughput](https://ww2.mathworks.cn/help/audio/gs/audio-io-buffering-latency-and-throughput.html).
 
-![streamprocessing3](/image/streamprocessing3.png "音频流处理过程")
+![streamprocessing3](image/streamprocessing3.png "音频流处理过程")
 
 需要设置的参数有一次采样率**sr**，读取的音频长度**readtime**，输入、输出**Device / Filename**，**Device**可以使用 [getAudioDevices( )](https://ww2.mathworks.cn/help/audio/ref/audioplayerrecorder.getaudiodevices.html)获取。
 
@@ -26,7 +26,7 @@ Buffer随着歌曲进行向前推移，可与通过卡尔曼滤波或自相关�
 
 如果**playdelay**设置为大于**2W**，则播放的为已验证的拍和音乐，如果 **playdelay**小于0, 则播放的是预估的拍子，但没有音乐，其中**2W**是验证窗口，长度为20%～30%的节拍周期。如果在**2W**验证窗口内播放，可能会同时听到估计拍和观测拍的声音。
 
-![wave](/image/wave.jpg "实时波形图")
+![wave](image/wave.jpg "实时波形图")
 
 利用**playdelay**可以提前将预估拍子播放出来，抵消掉音频处理系统的“**音频读取--处理--估计--播放**”循环的延迟，实现在线节拍跟踪，提前的时间可能需要根据不同的处理系统具体测量，目前根据效果手动指定为0.2s。
 
@@ -38,7 +38,7 @@ Buffer随着歌曲进行向前推移，可与通过卡尔曼滤波或自相关�
 
 最后添加了整首歌曲在滤波前、后的节拍周期**obvdeltas**,**filtdeltas**, 也给出了Kalman滤波算法给出的和自相关运算得到的tempo曲线**filttmpos**,**xcrtmpos**的对比。
 
-![df](/image/df.jpg "实时检测函数")
+![df](image/df.jpg "实时检测函数")
 
 ## 概率数据关联(PDA)
 
@@ -46,13 +46,12 @@ PDA算法用概率的方法同时讨论所有观测到的候选拍。理想情�
 
 PDA算法分为两步：
 
-1. 验证测量值：限制了测量值选取的范围，减少候选拍。
-
-   由于参数复杂，手动限定一个观测区域即可。
+1. 验证测量值：限制了测量值选取的范围，减少候选拍。由于参数复杂，手动选定一个观测区域，为估计拍周围20%的节拍周期长度的区间。
 
    确定验证区域后，下一步是进行概率数据关联（或叫概率数据加权）。每一次采样时，都会计算一次测量验证空间，如果落入测量空间的候选测量值不止一个，那么就对所有候选测量值进行PDA。
 
 2. 关联测量值：将候选的测量值与目标关联起来，获得一个更准确的测量值。
+    
     2.1. 基础PDA-I：假定状态变量服从高斯分布，修改卡尔曼滤波算法，将新息修改为概率加权新息。对卡尔曼滤波算法修改如下:
 
     原始算法：
