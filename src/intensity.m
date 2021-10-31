@@ -2,7 +2,7 @@ clear
 close();
 sgsrate = 400;
 % % Read Train Audio
-Path = 'C:/Users/47370/Desktop/train/'; 
+Path = '../../train/'; 
 AudioList=[];
 File = dir(fullfile(Path,'*.wav')); 
 FileNames = {File.name}';            
@@ -26,7 +26,7 @@ for   k = 1 : L
 end
 
 % % Read Train Gound Truth
-Path = 'C:/Users/47370/Desktop/train/'; 
+Path = '../../train/'; 
 DataList=[];
 File = dir(fullfile(Path,'*.txt')); 
 FileNames = {File.name}';            
