@@ -73,6 +73,10 @@ if length(onsetenv) == 0 %#ok<ISMT>
 %   % Only look at the top 80 dB
 %   D = max(D, max(max(D))-80);
 
+  % Average Filting
+  for i = 1:40
+      D(:,i) = smooth(D(:,i),3);
+  end  
    
   % The raw onset decision waveform
   mm = (mean(max(0,diff(D(1:40,:)')')));
