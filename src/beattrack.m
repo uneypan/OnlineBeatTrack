@@ -3,8 +3,8 @@ clear KalmanFilter
 tic
 % % Initialization
 
-ifOut = true;
-ifPlay = true;
+ifOut = false;
+ifPlay = false;
 ifDraw = true;
 
 sr = 44100;
