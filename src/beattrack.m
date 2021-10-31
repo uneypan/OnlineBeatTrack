@@ -131,7 +131,6 @@ while ~isDone(fileReader)
     end
     end
     
-    if ifOut
         buffb = [ obvtaos ; pretao] - (nowtime - bufferhistory);
         [i,~]=find(buffb < 0);
         buffb(i)=[];
@@ -140,6 +139,8 @@ while ~isDone(fileReader)
         end
         buffout = [buffsignal;zeros(sr*bufferpredict,1)] + buffblipsound;
         out = buffout(round((starttime*sr-readLength+1:starttime*sr)));
+        
+    if ifOut   
         deviceWriter(out);
         fileWriter(out);
     end
@@ -181,9 +182,8 @@ toc
 % plot observed and filted deltas
 subplot(211)
 plot(obvtaos,obvtmpos, filttaos,filttmpos);
-ylim([60 240])
-xlim([0 filttaos(end)])
-title("Raw & Kalman Filted Tempos")
+xlim([0 nowtime])
+title("Raw & Kalman Filted Tempos (bpm)")
 drawnow
 
 % % plot tempo estimated by xcr and filter
@@ -199,9 +199,9 @@ subplot(212)
 timespan2 = linspace(0,nowtime,length(dfs))';
 p = plot(timespan2,dfs,'-b', ...
     [obvtaos obvtaos],[0 10],'-g');
-p(1).LineWidth = 0.2;
-p(2).LineWidth = 2;
+p(1).LineWidth = 0.1;
+p(2).LineWidth = 0.1;
 ylim([0 10])
-xlim([0 10])
+xlim([0 nowtime])
 title("Onset Detection Function")
 drawnow 
