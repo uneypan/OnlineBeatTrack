@@ -1,4 +1,5 @@
 clear
+close();
 sgsrate = 400;
 % % Read Train Audio
 Path = 'C:/Users/47370/Desktop/train/'; 
@@ -49,7 +50,7 @@ for k = 1 : L
     end
     df = dfucs{k,1};
     BeatNote = sort(blips); blips=[]; 
-    BeatNotelocs = round(BeatNote*sgsrate);
+    BeatNotelocs = round(BeatNote*400);
     NonBeatNotelocs = (1:length(df)); 
     NonBeatNotelocs(BeatNotelocs) =[];
     BeatNoteIntensitys = [BeatNoteIntensitys,df(BeatNotelocs)];
@@ -58,9 +59,8 @@ for k = 1 : L
 %     plot(x, dfucs{k}, ...
 %         [BeatNote' BeatNote'],[0 15],'-g')
 %     title(AudioList{k})
-%     xlim([0 AudioLengths(k)])
+%     xlim([0 5])
 %     drawnow
-    
 end
 
 
@@ -71,7 +71,5 @@ h1.BinWidth=0.25;
 h2.BinWidth=0.25;
 h1.Normalization='probability';
 h2.Normalization='probability';    
+xlim([0 8])
 
-
-
- 

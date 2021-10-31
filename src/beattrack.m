@@ -5,11 +5,11 @@ load In.csv
 tic
 % % Initialization
 sr = 44100;
-readtime = 0.1; % read audio stream duration at one time.
+readtime = 0.02; % read audio stream duration at one time.
 readLength = sr*readtime;
 
 fileReader = dsp.AudioFileReader( ...
-    'Filename','F:/“Ù¿÷/Alan Walker/Routine.flac', ...
+    'Filename','../../train/train1.wav', ...
     'SamplesPerFrame',readLength);
 
 fileWriter = dsp.AudioFileWriter(...
@@ -35,7 +35,7 @@ sgsrate = sro/shop; % sample rate for specgram frames
 sampleLength = readtime * sgsrate;
 bufferhistory = 3;  % allocate time for Onset Dectection & Autocorrelation
 bufferpredict = 1;  % allocate time for Kalman Filting
-playdelay = 1;
+playdelay = 2;
 bufferLength = round((bufferhistory+bufferpredict) * sr);
 buffersgsLength = round((bufferhistory+bufferpredict) * sgsrate);
 buffb = [];
@@ -61,8 +61,10 @@ A = [ 1 1 ;
       0 1 ];
 M = [ 1 0 ]; 
 
-ifOut = false;
+ifOut = true;
+ifPlay = false;
 ifDraw = false;
+
 % % main audio stream loop
 while ~isDone(fileReader)
 
@@ -141,10 +143,12 @@ while ~isDone(fileReader)
         out = buffout(round((starttime*sr-readLength+1:starttime*sr)));
         
     if ifOut   
-        deviceWriter(out);
+        
         fileWriter(out);
     end
-    
+    if ifPlay
+        deviceWriter(out);
+    end
     if ifDraw
         % plot Time-Domin wave in the buffer
         subplot(311)

@@ -42,9 +42,9 @@ if nargin < 5;   onsetenv = []; end
 if nargin < 6;   debug = 0; end
 
 sro = 8000;
-% specgram: 160 bin/s @ 8kHz = 20 ms / 5 ms hop
-swin = 160;
-shop = 40;
+% specgram: 80 bin/s @ 8kHz = 10 ms / 5 ms hop
+swin = 80;
+shop = 20;
 % mel channels
 nmel = 40;
 % sample rate for specgram frames (granularity for rest of processing)
@@ -84,7 +84,10 @@ if length(onsetenv) == 0 %#ok<ISMT>
 
   % dc-removed mm
   onsetenv = filter([1 -1], [1 -.99],mm);
-
+  
+  mm = smooth(mm,3);
+  mm = mm';
+  
 end  % of onsetenv calc block
 
 % Find rough global period
