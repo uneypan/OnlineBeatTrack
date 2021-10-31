@@ -1,11 +1,14 @@
 clear 
 clear KalmanFilter
-load Ib.csv
-load In.csv
 tic
 % % Initialization
+
+ifOut = true;
+ifPlay = true;
+ifDraw = true;
+
 sr = 44100;
-readtime = 0.02; % read audio stream duration at one time.
+readtime = 0.2; % read audio stream duration at one time.
 readLength = sr*readtime;
 
 fileReader = dsp.AudioFileReader( ...
@@ -13,7 +16,7 @@ fileReader = dsp.AudioFileReader( ...
     'SamplesPerFrame',readLength);
 
 fileWriter = dsp.AudioFileWriter(...
-    'Filename','../../beat.wav',...
+    'Filename','../../beat_train/beat.wav',...
     'FileFormat','WAV',...
     'SampleRate',sr);
 
@@ -35,7 +38,7 @@ sgsrate = sro/shop; % sample rate for specgram frames
 sampleLength = readtime * sgsrate;
 bufferhistory = 3;  % allocate time for Onset Dectection & Autocorrelation
 bufferpredict = 1;  % allocate time for Kalman Filting
-playdelay = 2;
+playdelay = -0.2;
 bufferLength = round((bufferhistory+bufferpredict) * sr);
 buffersgsLength = round((bufferhistory+bufferpredict) * sgsrate);
 buffb = [];
@@ -61,9 +64,7 @@ A = [ 1 1 ;
       0 1 ];
 M = [ 1 0 ]; 
 
-ifOut = true;
-ifPlay = false;
-ifDraw = false;
+
 
 % % main audio stream loop
 while ~isDone(fileReader)
@@ -143,9 +144,9 @@ while ~isDone(fileReader)
         out = buffout(round((starttime*sr-readLength+1:starttime*sr)));
         
     if ifOut   
-        
         fileWriter(out);
     end
+    
     if ifPlay
         deviceWriter(out);
     end
@@ -187,6 +188,7 @@ toc
 subplot(211)
 plot(obvtaos,obvtmpos, filttaos,filttmpos);
 xlim([0 nowtime])
+ylim([0 240])
 title("Raw & Kalman Filted Tempos (bpm)")
 drawnow
 
@@ -206,6 +208,6 @@ p = plot(timespan2,dfs,'-b', ...
 p(1).LineWidth = 0.1;
 p(2).LineWidth = 0.1;
 ylim([0 10])
-xlim([0 nowtime])
+xlim([0 5])
 title("Onset Detection Function")
 drawnow 

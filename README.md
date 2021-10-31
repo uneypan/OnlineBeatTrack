@@ -1,4 +1,4 @@
-# Online Beat Tracking Based on  Kalman Filter（Matlab）基于卡尔曼滤波的在线节拍跟踪器(Matlab 实现)
+# Online Beat Tracking Based on  Kalman Filter 基于卡尔曼滤波的在线节拍跟踪器（Matlab）
 
 ## 概述
 
@@ -10,35 +10,35 @@
 
 ![streamprocessing3](image/streamprocessing3.png "音频流处理过程")
 
-需要设置的参数有一次采样率**sr**，读取的音频长度**readtime**，输入、输出**Device / Filename**，**Device**可以使用 [getAudioDevices( )](https://ww2.mathworks.cn/help/audio/ref/audioplayerrecorder.getaudiodevices.html)获取。
+需要设置的参数有一次采样率*sr*，读取的音频长度*readtime*，输入、输出*Device/Filename*，*Device*可以使用 [getAudioDevices( )](https://ww2.mathworks.cn/help/audio/ref/audioplayerrecorder.getaudiodevices.html)获取。
 
 **注意**: 同时拾音和收音需要考虑音流重叠的问题，目前在MAC上可以用虚拟声卡软件Loopback提取音轨，Windows系统上还没找到比较好的解决方案。
 
 ## 添加一个处理的Buffer
 
-由于“**音频读取--处理--估计--播放**”循环存在延迟，因此验证拍永远落后于实际音频播放的时间。设置一个处理Buffer，长度由历史缓存**bufferhistory**和预估缓存**bufferpredict**构成。历史缓存用于重音检测和自相关运算，预估缓存用于放置和播放预估得到的拍子。
+由于“*音频读取--处理--估计--播放*”循环存在延迟，因此验证拍永远落后于实际音频播放的时间。设置一个处理Buffer，长度由历史缓存*bufferhistory*和预估缓存*bufferpredict*构成。历史缓存用于重音检测和自相关运算，预估缓存用于放置和播放预估得到的拍子。
 
 Buffer随着歌曲进行向前推移，可与通过卡尔曼滤波或自相关运算获得的预估拍，再经localmax观测得到新的验证拍，如此递归运算。
 
+![wave](image/wave.jpg "波形图")
+
 ## 可选择的播放位置
 
-我们可以选择播放Buffer内任意位置的音频，通过一个延迟参数**playdelay**来实现，其含义为当前时间延迟**playdelay**秒。
+我们可以选择播放Buffer内任意位置的音频，通过一个延迟参数*playdelay*来实现，其含义为当前时间延迟*playdelay*秒。
 
-如果**playdelay**设置为大于**2W**，则播放的为已验证的拍和音乐，如果 **playdelay**小于0, 则播放的是预估的拍子，但没有音乐，其中**2W**是验证窗口，长度为20%～30%的节拍周期。如果在**2W**验证窗口内播放，可能会同时听到估计拍和观测拍的声音。
+如果*playdelay*设置为大于*2W*，则播放的为已验证的拍和音乐，如果 *playdelay*小于0, 则播放的是预估的拍子，但没有音乐，其中*2W*是验证窗口，长度为20%～30%的节拍周期。如果在*2W*验证窗口内播放，可能会同时听到估计拍和观测拍的声音。
 
-![wave](image/wave.jpg "实时波形图")
-
-利用**playdelay**可以提前将预估拍子播放出来，抵消掉音频处理系统的“**音频读取--处理--估计--播放**”循环的延迟，实现在线节拍跟踪，提前的时间可能需要根据不同的处理系统具体测量，目前根据效果手动指定为0.2s。
+利用*playdelay*可以提前将预估拍子播放出来，抵消掉音频处理系统的“**音频读取--处理--估计--播放**”循环的延迟，实现在线节拍跟踪，提前的时间可能需要根据不同的处理系统具体测量，目前根据效果手动指定为0.2s。
 
 ## 对<tempo.m>的一些修改
 
 <tempo.m> 是coversongs库给出的预处理函数。
 
-原<tempo.m> 给出的**onsetenv**经过dc-remove滤波，去掉这个filter以后得到正常的重音检测函数 **df**，在Buffer内绘制出**df**,观测后发现主要是存在休止符和non-beat onset干扰的问题，导致卡尔曼滤波效果不稳定。
+原<tempo.m> 给出的*onsetenv*经过dc-remove滤波，去掉这个filter以后,增加了p=3的均值滤波，得到正常的重音检测函数*df*，在Buffer内绘制出*df*,观测后发现主要是存在休止符和Non-Beat Onset干扰的问题，导致卡尔曼滤波效果不稳定。
 
-最后添加了整首歌曲在滤波前、后的节拍周期**obvdeltas**,**filtdeltas**, 也给出了Kalman滤波算法给出的和自相关运算得到的tempo曲线**filttmpos**,**xcrtmpos**的对比。
+最后添加了整首歌曲在滤波前、后的节拍周期*obvdeltas*,*filtdeltas*, 也给出了Kalman滤波算法给出的和自相关运算得到的tempo曲线*filttmpos*,*xcrtmpos*的对比。
 
-![df](image/df.jpg "实时检测函数")
+![df](image/track_train1.jpg "实时检测函数")
 
 ## 概率数据关联(PDA)
 
@@ -70,9 +70,13 @@ PDA算法分为两步：
     P = Pp - K * M * Pp;   
     ```
 
-    引入多个观测候选值**y**和对应的权值**bta**，算法修改为：
+    引入多个观测候选值*y*和对应的权值*bta*，算法修改为：
 
     ``` matlab
+   bta0 = bta(1); % Probribility of no beat obvsered in the window.
+
+   bta(1) =[]; % Probribility of the candidate beat is beat note.
+
     % Predict
     xp = A * x;
 
@@ -89,5 +93,8 @@ PDA算法分为两步：
 
     Ph = K * ( sum( bta * (yh * yh') ) - yh * yh' )  * K';
 
-    P = ( 1 - sum(bta) ) * Pp + sum(bta) * P0 + Ph;  
+    P = bta0 * Pp + (1-bta0) * P0 + Ph;  
     ```
+
+
+
