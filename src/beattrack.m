@@ -3,12 +3,12 @@ clear KalmanFilter
 tic
 % % Initialization
 
-ifOut = false;
-ifPlay = false;
-ifDraw = true;
+ifOut = true;
+ifPlay = true;
+ifDraw = false;
 
 sr = 44100;
-readtime = 0.2; % read audio stream duration at one time.
+readtime = 0.1; % read audio stream duration at one time.
 readLength = sr*readtime;
 
 fileReader = dsp.AudioFileReader( ...
@@ -22,12 +22,12 @@ fileWriter = dsp.AudioFileWriter(...
 
 deviceReader = audioDeviceReader(...
     'SamplesPerFrame', readLength,...
-    'Device','Default',...
+    'Device','Loopback Audio',...
     'NumChannels',2 );
 
 deviceWriter = audioDeviceWriter( ...
     'SampleRate',sr,...
-    'Device','Default');
+    'Device','MacBook Air扬声器');
 
 cnt = 0;
 sro = 8000;  % specgram: 80 bin @ 40kHz = 2 ms
@@ -74,7 +74,7 @@ while ~isDone(fileReader)
     starttime = bufferhistory - playdelay;
     playtime = nowtime - playdelay;
 
-    signal = fileReader();
+    signal = deviceReader();
     if length(signal(1,:)) == 2
         signal = (signal(:,1)+signal(:,2))/2; % stero to monosignal
     end
@@ -88,7 +88,7 @@ while ~isDone(fileReader)
     % % Kalman Filter
     pretao = sum(b);
     predelta = b(2);
-    w = 0.5 * predelta;
+    w = 0.2 * predelta;
     if pretao < nowtime - w / 2
     % Valify Measurements
     pretaoloc = round((pretao - nowtime + bufferhistory) * sgsrate);
