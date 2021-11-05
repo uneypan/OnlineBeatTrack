@@ -1,4 +1,4 @@
-function [t,xcr,D,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
+function [startpd,startpd2,xcr,D,mm,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
 % [t,xcr,D,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
 %    Estimate the overall tempo of a track for the MIREX McKinney contest.  
 %    <d> is the input audio at sampling rate sr.  
@@ -42,7 +42,7 @@ if nargin < 5;   onsetenv = []; end
 if nargin < 6;   debug = 0; end
 
 sro = 8000;
-% specgram: 80 bin @ 8kHz = 10 ms / 2.5 ms hop
+% specgram: 80 bin/s @ 8kHz = 10 ms / 5 ms hop
 swin = 80;
 shop = 20;
 % mel channels
@@ -57,7 +57,7 @@ D = 0;
 if length(onsetenv) == 0 %#ok<ISMT> 
   % no onsetenv provided - have to calculate it
 
-  % resample to 8 kHz 重采样
+  % resample to 8 kHz 重采�?
   if (sr ~= sro)
     gg = gcd(sro,sr);
     d = resample(d,sro/gg,sr/gg);
@@ -68,20 +68,26 @@ if length(onsetenv) == 0 %#ok<ISMT>
   
   % Construct db-magnitude-mel-spectrogram
   mlmx = fft2melmx(swin,sr,nmel);
-  D = 20*log10(max(1e-10,mlmx(:,1:(swin/2+1))*abs(D)));
+  D = 20*log10( max(1e-10,mlmx( : , 1 : (swin/2+1))*abs(D) ) );
 
-  % Only look at the top 80 dB
-  D = max(D, max(max(D))-80);
+%   % Only look at the top 80 dB
+%   D = max(D, max(max(D))-80);
 
-  %imgsc(D)
-  
+  % Average Filting
+  for i = 1:40
+      D(:,i) = smooth(D(:,i),3);
+  end  
+   
   % The raw onset decision waveform
-  mm = (mean(max(0,diff(D')')));
+  mm = (mean(max(0,diff(D(1:40,:)')')));
   eelen = length(mm);
 
   % dc-removed mm
   onsetenv = filter([1 -1], [1 -.99],mm);
-
+  
+  mm = smooth(mm,3);
+  mm = mm';
+  
 end  % of onsetenv calc block
 
 % Find rough global period

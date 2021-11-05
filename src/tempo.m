@@ -1,4 +1,4 @@
-function [startpd,startpd2,xcr,D,mm,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
+function [D,mm,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
 % [t,xcr,D,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
 %    Estimate the overall tempo of a track for the MIREX McKinney contest.  
 %    <d> is the input audio at sampling rate sr.  
@@ -57,7 +57,7 @@ D = 0;
 if length(onsetenv) == 0 %#ok<ISMT> 
   % no onsetenv provided - have to calculate it
 
-  % resample to 8 kHz 重采�?
+  % resample to 8 kHz 
   if (sr ~= sro)
     gg = gcd(sro,sr);
     d = resample(d,sro/gg,sr/gg);
@@ -89,93 +89,6 @@ if length(onsetenv) == 0 %#ok<ISMT>
   mm = mm';
   
 end  % of onsetenv calc block
-
-% Find rough global period
-% Only use the 1st 90 sec to estimate global pd (avoid glitches?)
-
-maxdur = 90; % sec
-maxcol = min(round(maxdur*sgsrate),length(onsetenv));
-
-xcr = xcorr(onsetenv(1:maxcol),onsetenv(1:maxcol),acmax);
-
-% find local max in the global ac
-rawxcr = xcr(acmax+1+[0:acmax]);
-
-% window it around default bpm
-bpms = 60*sgsrate./([0:acmax]+0.1);
-xcrwin = exp(-.5*((log(bpms/tmean)/log(2)/tsd).^2));
-
-xcr = rawxcr.*xcrwin;
-
-xpks = localmax(xcr);  
-% will not include any peaks in first down slope (before goes below
-% zero for the first time)
-xpks(1:min(find(xcr<0))) = 0; %#ok<MXFND> 
-% largest local max away from zero
-maxpk = max(xcr(xpks));
-
-% ?? then period is shortest period with a peak that approaches the max
-%maxpkthr = 0.4;
-%startpd = -1 + min(find( (xpks.*xcr) > maxpkthr*maxpk ) );
-%startpd = -1 + (find( (xpks.*xcr) > maxpkthr*maxpk ) );
-
-% no, just largest peak after windowing
-startpd = -1 + find((xpks.*xcr) == max(xpks.*xcr));
-
-% ??Choose acceptable peak closest to 120 bpm
-%[vv,spix] = min(abs(60./(startpd/sgsrate) - 120));
-%startpd = startpd(spix);
-% No, just choose shortest acceptable peak
-startpd = startpd(1);
-
-t = 60/(startpd/sgsrate);
-
-% Choose best peak out of .33 .5 2 3 x this period
-candpds = round([.33 .5 2 3]*startpd);
-candpds = candpds(candpds < acmax);
-
-[vv,xx] = max(xcr(1+candpds));
-
-startpd2 = candpds(xx);
-vvm = xcr(1+startpd);
-pratio = vvm/(vvm+vv);
-
-t = [60/(startpd/sgsrate) 60/(startpd2/sgsrate) pratio];
-
-% ensure results are lowest-first
-if t(2) < t(1)
-  t([1 2]) = t([2 1]);
-  t(3) = 1-t(3);
-end  
-
-startpd = (60/t(1))*sgsrate;
-startpd2 = (60/t(2))*sgsrate;
-
-%  figure
-%  disp(['tmean=',num2str(tmean),' tsd=',num2str(tsd),' maxpk=',num2str(startpd)]);
-%  subplot(211)
-%  plot([0:acmax],xcrwin/max(abs(xcrwin)),[0:acmax],xcr/max(abs(xcr)),...
-%       [startpd startpd],[-1 1],'-r',[startpd2 startpd2],[-1 1],'-c')
-%  subplot(212)
-%  bpms(1) = bpms(2);
-%  plot(bpms,xcrwin/max(abs(xcrwin)),bpms,xcr/max(abs(xcr)),...
-%       [t(1) t(1)],[-1 1],'-r',[t(2) t(2)],[-1 1],'-c')
-
-if debug > 0
-
-  % Report results and plot weighted autocorrelation with picked peaks
-  disp(['Global bt pd = ',num2str(t(1)),' @ ',num2str(t(3)),' / ',num2str(t(2)),' bpm']);
-
-  subplot(414)
-  plot([0:acmax],xcr,'-b', ...
-       [0:acmax],xcrwin*maxpk,'-r', ...
-       [startpd startpd], [min(xcr) max(xcr)], '-g', ...
-       [startpd2 startpd2], [min(xcr) max(xcr)], '-c');
-  legend('xcr','xcrwin*maxpk')
-  grid;
-  drawnow;
-
-end
 
 % Read in all the tempo settings
 % for i = 1:20; f = fopen(['mirex-beattrack/train/train',num2str(i),'-tempo.txt']); r(i,:) = fscanf(f, '%f\n'); fclose(f); end

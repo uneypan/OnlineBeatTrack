@@ -3,8 +3,8 @@ clear KalmanFilter
 tic
 % % Initialization
 
-ifOut = false;
-ifPlay = false;
+ifOut = true;
+ifPlay = true;
 ifDraw = false;
 
 sr = 44100;
@@ -22,8 +22,8 @@ fileWriter = dsp.AudioFileWriter(...
 
 deviceReader = audioDeviceReader(...
     'SamplesPerFrame', readLength,...
-    'Device','外置麦克风',...
-    'NumChannels',1 );
+    'Device','Loopback Audio',...
+    'NumChannels',2 );
 
 deviceWriter = audioDeviceWriter( ...
     'SampleRate',sr,...
@@ -74,7 +74,7 @@ while ~isDone(fileReader)
     starttime = bufferhistory - playdelay;
     playtime = nowtime - playdelay;
 
-    signal = fileReader();
+    signal = deviceReader();
     if length(signal(1,:)) == 2
         signal = (signal(:,1)+signal(:,2))/2; % stero to monosignal
     end
@@ -82,7 +82,7 @@ while ~isDone(fileReader)
     buffsignal = [buffsignal ; signal];
     
     % Period Estimate
-    [D,df,~,~] = tempo(buffsignal,sr,tmean,tsd);
+    [pd,pd2,xcr,D,df,~,~] = tempo(buffsignal,sr,tmean,tsd);
     dfs = [dfs ; df( end-sampleLength : end )'];
     
     % % Kalman Filter
@@ -115,6 +115,7 @@ while ~isDone(fileReader)
         filttaos = [filttaos ; b(1)];
         filtdeltas = [filtdeltas ; b(2)];
         filttmpos =  [filttmpos ; 60/b(2)];
+        xcrtmpos = [xcrtmpos; pd2];
         if ifDraw
         % Plot onset detection function
         subplot(313)
