@@ -1,4 +1,4 @@
-function out = KalmanFilter(y)
+function [Xout,Pout] = KalmanFilter(y)
 % Kalman Filter
 persistent A M Q R x P Init
 
@@ -8,11 +8,12 @@ if isempty(Init)
   A = [ 1 1;
         0 1 ];
   M = [ 1 0 ]; 
-  Q = [ 100 0 ;
-        0  100];
-  R = 10;
+  Q = [ 1 0 ;
+        0 1 ];
+  R = 1;
   x = [ 0 y ]';
-  P = 100 * eye(2);
+  P = [ 1 0 ;
+        0 1 ];
 end
 
 % Predict
@@ -25,6 +26,7 @@ x = xp + K * (y - M * xp);
 P = Pp - K * M * Pp;   
 
 % ouput
-out = x;
+Xout = x;
+Pout = P;
 
 end

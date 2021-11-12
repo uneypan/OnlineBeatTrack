@@ -1,4 +1,4 @@
-function [D,mm,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
+function [D,mm,onsetenv,sgsrate] = tempo(d,sr)
 % [t,xcr,D,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
 %    Estimate the overall tempo of a track for the MIREX McKinney contest.  
 %    <d> is the input audio at sampling rate sr.  
@@ -36,10 +36,6 @@ function [D,mm,onsetenv,sgsrate] = tempo(d,sr,tmean,tsd,onsetenv,debug)
 % 
 %   See the file "COPYING" for the text of the license.
 
-if nargin < 3;   tmean = 120; end
-if nargin < 4;   tsd = 1.4; end
-if nargin < 5;   onsetenv = []; end
-if nargin < 6;   debug = 0; end
 
 sro = 8000;
 % specgram: 80 bin/s @ 8kHz = 10 ms / 5 ms hop
@@ -49,46 +45,38 @@ shop = 20;
 nmel = 40;
 % sample rate for specgram frames (granularity for rest of processing)
 sgsrate = sro/shop;
-% autoco out to 4 s
-acmax = round(4*sgsrate);
 
-D = 0;
   
-if length(onsetenv) == 0 %#ok<ISMT> 
-  % no onsetenv provided - have to calculate it
+% resample to 8 kHz 
+if (sr ~= sro)
+gg = gcd(sro,sr);
+d = resample(d,sro/gg,sr/gg);
+sr = sro;
+end
 
-  % resample to 8 kHz 
-  if (sr ~= sro)
-    gg = gcd(sro,sr);
-    d = resample(d,sro/gg,sr/gg);
-    sr = sro;
-  end
+D = specgram(d,swin,sr,swin,swin-shop);
+
+% Construct db-magnitude-mel-spectrogram
+mlmx = fft2melmx(swin,sr,nmel);
+D = 20*log10( max(1e-10,mlmx( : , 1 : (swin/2+1))*abs(D) ) );
+
+% Only look at the top 80 dB
+D = max(D, max(max(D))-80);
+
+% Average Filting
+for i = 1:40
+  D(:,i) = smooth(D(:,i),3);
+end  
+
+% The raw onset decision waveform
+mm = (mean(max(0,diff(D(3:6,:)')')));
+
+% dc-removed mm
+onsetenv = filter([1 -1], [1 -.99],mm);
+
+% Average Filting
+mm = smooth(mm,3);
+mm = mm';
   
-  D = specgram(d,swin,sr,swin,swin-shop);
-  
-  % Construct db-magnitude-mel-spectrogram
-  mlmx = fft2melmx(swin,sr,nmel);
-  D = 20*log10( max(1e-10,mlmx( : , 1 : (swin/2+1))*abs(D) ) );
+% of onsetenv calc block
 
-%   % Only look at the top 80 dB
-%   D = max(D, max(max(D))-80);
-
-  % Average Filting
-  for i = 1:40
-      D(:,i) = smooth(D(:,i),3);
-  end  
-   
-  % The raw onset decision waveform
-  mm = (mean(max(0,diff(D(1:40,:)')')));
-  eelen = length(mm);
-
-  % dc-removed mm
-  onsetenv = filter([1 -1], [1 -.99],mm);
-  
-  mm = smooth(mm,3);
-  mm = mm';
-  
-end  % of onsetenv calc block
-
-% Read in all the tempo settings
-% for i = 1:20; f = fopen(['mirex-beattrack/train/train',num2str(i),'-tempo.txt']); r(i,:) = fscanf(f, '%f\n'); fclose(f); end

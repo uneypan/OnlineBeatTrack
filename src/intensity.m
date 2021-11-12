@@ -20,7 +20,7 @@ for   k = 1 : L
     [d,sr] = audioread(AudioName);
     Length = length(d)/sr;
     AudioLengths = [AudioLengths;Length];
-    [~,~,~,~,df,~,~] = tempo(d,sr);
+    [~,df,~,~] = tempo(d,sr);
     df = [df,zeros(1,4)];
     dfucs = [dfucs;df];
 end
