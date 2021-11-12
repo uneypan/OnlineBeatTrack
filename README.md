@@ -72,7 +72,7 @@ $$\begin{aligned}
 
 上述过程Matlab实现如下：给定拍子位置 ```tao``` 和节拍周期 ```delta``` 以及对应的协方差 ```P```，并加入过程噪声 ```Q``` 和观测噪声 ```R``` ,于是卡尔曼滤波器实现如下：
 
-``` matlab
+   ``` matlab
 % % % KalmanFilter.m % % %
 % Predict
 xp = A * x;
@@ -82,7 +82,7 @@ Pp = A * P * A' + Q;
 K = Pp * M' / ( M * Pp * M' + R);
 x = xp + K * (y - M * xp);
 P = Pp - K * M * Pp;   
-```
+   ```
 
 ## 可选择的播放位置
 
@@ -136,9 +136,9 @@ $$
 假设验证区域中有多个候选拍，对于其中某个候选拍k为真实拍的概率可以分两部分计算。  
 *No.1* 一如卡尔曼滤波器假设，估计拍的分布是一个均值估计位置```pretao```,方差```P(1,1)```的高斯分布  
 
-``` matlab
+   ``` matlab
 pdf = normpdf(window, pretao, sqrt(P(1,1)))
-```
+   ```
 
 则某一候选拍为真实拍的的概率就是其位置在此高斯分布上的**位置概率**```ploc```，显然```ploc```与测量残差相关。
 
@@ -194,7 +194,7 @@ $$
 
 在原有卡尔曼滤波算法的基础上，引入多个观测候选值 ```y``` 以及对应的权值系数 ```bta```，在Matlab对卡尔曼滤波算法修改如下:
 
-``` matlab
+   ``` matlab
 % % % KalmanFilterPDA.m % % %
 % Predict
 xp = A * x;
@@ -207,7 +207,7 @@ P0 = ( eye(2) - K * M ) * Pp;
 yh = y - M * xp;
 Ph = K * ( sum( bta * (yh * yh') ) - yh * yh' )  * K';
 P = bta0 * Pp + (1 - bta0) * P0 + Ph;  
-```
+   ```
 
 ## 统计强度概率分布
 
@@ -247,8 +247,8 @@ P = bta0 * Pp + (1 - bta0) * P0 + Ph;
 
 分段函数的写法
 
-``` matlab
+   ``` matlab
 function y=myfun1(x)
 y=x.*(x>=0 & x<1)+2*x.*(x>=1 & x<=2);
 end
-```
+   ```
